@@ -54,27 +54,37 @@ def is_ordered_block(w3, block_num):
 	txs = block["transactions"]
 	base_fee = block.get("baseFeePerGas", None)
 
+	# If only 0 or 1 transaction, it is already sorted
 	if len(txs) <= 1:
 		return True
 
 	priority_fees = []
 
+	# Loop through each transaction
 	for tx in txs:
-		if tx.get("maxPriorityFeePerFas") is not None and tx.get("maxFeePerGas") is not None:
+
+		# Check if type 2
+		if tx.get("maxPriorityFeePerGas") is not None and tx.get("maxFeePerGas") is not None:
 			priority_fee = min(tx["maxPriorityFeePerGas"], tx["maxFeePerGas"] - base_fee)
+
+		
 		else:
+			# Not type 2
 			if base_fee is None:
 				priority_fee = tx["gasPrice"]
+				
 			else:
 				priority_fee = tx["gasPrice"] - base_fee
 
 		priority_fees.append(priority_fee)
 
+	# First assume the block is ordered then run the script below to check if it is not ordered
 	ordered = True
 
-	for i in range(leng(priority_fees) - 1):
+	# Check if it's ordered
+	for i in range(len(priority_fees) - 1):
 		if priority_fees[i[ < priority_fees[i + 1]:
-			ordered= False
+			ordered = False
 			break
 	
 	return ordered
@@ -97,9 +107,9 @@ def get_contract_values(contract, admin_address, owner_address):
 	default_admin_role = int.to_bytes(0, 32, byteorder="big")
 
 	# TODO complete the following lines by performing contract calls
-	onchain_root = 0  # Get and return the merkleRoot from the provided contract
-	has_role = 0  # Check the contract to see if the address "admin_address" has the role "default_admin_role"
-	prime = 0  # Call the contract to get the prime owned by "owner_address"
+	onchain_root = contract.functions.merkleRoot().call()  # Get and return the merkleRoot from the provided contract
+	has_role = contract.functions.hasRole(default_admin_role, admin_address).call()  # Check the contract to see if the address "admin_address" has the role "default_admin_role"
+	prime = contract.functions.getPrimeByOwner(owner_address).call()  # Call the contract to get the prime owned by "owner_address"
 
 	return onchain_root, has_role, prime
 
