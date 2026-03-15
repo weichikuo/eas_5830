@@ -15,7 +15,7 @@ with open('ape_abi.json', 'r') as f:
 
 ############################
 # Connect to an Ethereum node
-api_url = ""  # YOU WILL NEED TO PROVIDE THE URL OF AN ETHEREUM NODE
+api_url = "https://mainnet.infura.io/v3/ab32d5a611dd4e22bda3f5c3ade2b044"  # YOU WILL NEED TO PROVIDE THE URL OF AN ETHEREUM NODE
 provider = HTTPProvider(api_url)
 web3 = Web3(provider)
 
@@ -28,6 +28,32 @@ def get_ape_info(ape_id):
     data = {'owner': "", 'image': "", 'eyes': ""}
 
     # YOUR CODE HERE
+    contract = web3.eth.contract(address=contract_address, abi=abi)
+
+    owner = contract.functions.ownerOf(ape_id).call()
+    token_uri = contract.functions.tokenURI(ape_id).call()
+
+    if token_uri.startswith("ipfs://"):
+        metadata_url = "https://gateway.pinata.cloud/ipfs/" + token_uri[len("ipfs://"):]
+    else:
+        metadata_url = token_uri
+
+    response = requests.get(metadata_url, timeout=30)
+    response.raise_for_status()
+    metadata = response.json()
+
+    image = metadata.get("image", "")
+
+    eyes = ""
+    attributes = metadata.get("attributes", [])
+    for attribute in attributes:
+        if attribute.get("trait_type") == "Eyes":
+            eyes = attribute.get("value", "")
+            break
+
+    data["owner"] = owner
+    data["image"] = image
+    data["eyes"] = eyes
 
     assert isinstance(data, dict), f'get_ape_info{ape_id} should return a dict'
     assert all([a in data.keys() for a in
