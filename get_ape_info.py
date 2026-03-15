@@ -7,7 +7,7 @@ bayc_address = "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"
 contract_address = Web3.to_checksum_address(bayc_address)
 
 # You will need the ABI to connect to the contract
-# The file 'abi.json' has the ABI for the bored ape contract
+# The file 'ape_abi.json' has the ABI for the bored ape contract
 # In general, you can get contract ABIs from etherscan
 # https://api.etherscan.io/api?module=contract&action=getabi&address=0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D
 with open('ape_abi.json', 'r') as f:
@@ -30,12 +30,17 @@ def get_ape_info(ape_id):
     # YOUR CODE HERE
     contract = web3.eth.contract(address=contract_address, abi=abi)
 
+    # Find owner
     owner = contract.functions.ownerOf(ape_id).call()
-    token_uri = contract.functions.tokenURI(ape_id).call()
 
+    # Find Token URI
+    token_uri = contract.functions.tokenURI(ape_id).call()
+    
     if token_uri.startswith("ipfs://"):
+        # Check token URI is an IPFS URI
         metadata_url = "https://gateway.pinata.cloud/ipfs/" + token_uri[len("ipfs://"):]
     else:
+        # If the token URI is normal HTTP URL, use it directly
         metadata_url = token_uri
 
     response = requests.get(metadata_url, timeout=30)
