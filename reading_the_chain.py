@@ -11,12 +11,26 @@ from web3.providers.rpc import HTTPProvider
 # infura_url = f"https://mainnet.infura.io/v3/{infura_token}"
 
 def connect_to_eth():
-	# TODO insert your code for this method from last week's assignment
+	url = "https://mainnet.infura.io/v3/ab32d5a611dd4e22bda3f5c3ade2b044" 
+	w3 = Web3(HTTPProvider(url))
+	assert w3.is_connected(), f"Failed to connect to provider at {url}"
 	return w3
 
 
 def connect_with_middleware(contract_json):
-	# TODO insert your code for this method from last week's assignment
+	with open(contract_json, "r") as f:
+		d = json.load(f)
+		d = d['bsc']
+		address = d['address']
+		abi = d['abi']
+
+	bnb_url = "https://bnb-testnet.api.onfinality.io/public"
+	w3 = Web3(HTTPProvider(bnb_url))
+	assert w3.is_connected(), f"Failed to connect to provider at {bnb_url}"
+
+	w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+	contract = w3.eth.contract(address=Web3.to_checksum_address(address), abi=abi)
+	
 	return w3, contract
 
 
