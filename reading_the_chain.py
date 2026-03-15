@@ -83,7 +83,7 @@ def is_ordered_block(w3, block_num):
 
 	# Check if it's ordered
 	for i in range(len(priority_fees) - 1):
-		if priority_fees[i[ < priority_fees[i + 1]:
+		if priority_fees[i] < priority_fees[i + 1]:
 			ordered = False
 			break
 	
