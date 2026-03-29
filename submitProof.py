@@ -25,7 +25,8 @@ def merkle_assignment():
     tree = build_merkle(leaves)
 
     # Select a random leaf and create a proof for that leaf
-    random_leaf_index = 0 #TODO generate a random index from primes to claim (0 is already claimed)
+    random_leaf_index = random.randint(1, 8191) #TODO generate a random index from primes to claim (0 is already claimed)
+    
     proof = prove_merkle(tree, random_leaf_index)
 
     # This is the same way the grader generates a challenge for sign_challenge()
@@ -37,7 +38,7 @@ def merkle_assignment():
         tx_hash = '0x'
         # TODO, when you are ready to attempt to claim a prime (and pay gas fees),
         #  complete this method and run your code with the following line un-commented
-        # tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
+        tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
 
 
 def generate_primes(num_primes):
@@ -48,6 +49,11 @@ def generate_primes(num_primes):
     primes_list = []
 
     #TODO YOUR CODE HERE
+    num = 2
+    while len(primes_list) < num_primes:
+        if all(num % i != 0 for i in range(2, int(num**0.5) + 1)):
+            primes_list.append(num)
+        num += 1
 
     return primes_list
 
@@ -59,6 +65,7 @@ def convert_leaves(primes_list):
     """
 
     # TODO YOUR CODE HERE
+    return [int.to_bytes(p, 32, 'big') for p in primes_list]
 
     return []
 
@@ -72,7 +79,14 @@ def build_merkle(leaves):
     """
 
     #TODO YOUR CODE HERE
-    tree = []
+    tree = [leaves]
+    current_level = leaves
+    while len(current_level) > 1:
+        next_level = []
+        for i in range(0, len(current_level), 2):
+            next_level.append(hash_pair(current_level[i], current_level[i+1]))
+        tree.append(next_level)
+        current_level = next_level
 
     return tree
 
@@ -86,6 +100,12 @@ def prove_merkle(merkle_tree, random_indx):
     """
     merkle_proof = []
     # TODO YOUR CODE HERE
+    index = random_indx
+    for i in range(len(merkle_tree) - 1):
+        level = merkle_tree[i]
+        sibling_index = index + 1 if index % 2 == 0 else index - 1
+        merkle_proof.append(level[sibling_index])
+        index //= 2
 
     return merkle_proof
 
@@ -104,7 +124,8 @@ def sign_challenge(challenge):
     eth_sk = acct.key
 
     # TODO YOUR CODE HERE
-    eth_sig_obj = 'placeholder'
+    eth_encoded_msg = eth_account.messages.encode_defunct(text=challenge)
+    eth_sig_obj = acct.sign_message(eth_encoded_msg)
 
     return addr, eth_sig_obj.signature.hex()
 
@@ -122,7 +143,17 @@ def send_signed_msg(proof, random_leaf):
     w3 = connect_to(chain)
 
     # TODO YOUR CODE HERE
-    tx_hash = 'placeholder'
+    contract = w3.eth.contract(address=address, abi=abi)
+    
+    tx = contract.functions.submit(proof, random_leaf).build_transaction({
+        'from': acct.address,
+        'nonce': w3.eth.get_transaction_count(acct.address),
+        'gas': 500000, 
+        'gasPrice': w3.eth.gas_price
+    })
+    
+    signed_tx = acct.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
     return tx_hash
 
