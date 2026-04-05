@@ -57,6 +57,39 @@ contract AMM is AccessControl{
 		uint256 swapAmt;
 
 		//YOUR CODE HERE 
+		qtyA = ERC20(tokenA).balanceOf(address(this));
+		qtyB = ERC20(tokenB).balanceOf(address(this));
+
+		uint256 effectiveSellAmount = (sellAmount * (10000 - feebps)) / 10000;
+
+		if( sellToken == tokenA ) {
+			swapAmt = qtyB - (invariant / (qtyA + effectiveSellAmount));
+
+			require(
+				ERC20(tokenA).transferFrom(msg.sender, address(this), sellAmount),
+				"tokenA transferFrom failed"
+			);
+			require(
+				ERC20(tokenB).transfer(msg.sender, swapAmt),
+				"tokenB transfer failed"
+			);
+
+			emit Swap( tokenA, tokenB, sellAmount, swapAmt );
+		} else {
+			swapAmt = qtyA - (invariant / (qtyB + effectiveSellAmount));
+
+			require(
+				ERC20(tokenB).transferFrom(msg.sender, address(this), sellAmount),
+				"tokenB transferFrom failed"
+			);
+			require(
+				ERC20(tokenA).transfer(msg.sender, swapAmt),
+				"tokenA transfer failed"
+			);
+
+			emit Swap( tokenB, tokenA, sellAmount, swapAmt );
+		}
+
 
 		uint256 new_invariant = ERC20(tokenA).balanceOf(address(this))*ERC20(tokenB).balanceOf(address(this));
 		require( new_invariant >= invariant, 'Bad trade' );
@@ -69,6 +102,21 @@ contract AMM is AccessControl{
 	function provideLiquidity( uint256 amtA, uint256 amtB ) public {
 		require( amtA > 0 || amtB > 0, 'Cannot provide 0 liquidity' );
 		//YOUR CODE HERE
+		if( amtA > 0 ) {
+			require(
+				ERC20(tokenA).transferFrom(msg.sender, address(this), amtA),
+				"tokenA transferFrom failed"
+			);
+		}
+
+		if( amtB > 0 ) {
+			require(
+				ERC20(tokenB).transferFrom(msg.sender, address(this), amtB),
+				"tokenB transferFrom failed"
+			);
+		}
+
+		invariant = ERC20(tokenA).balanceOf(address(this)) * ERC20(tokenB).balanceOf(address(this));
 		emit LiquidityProvision( msg.sender, amtA, amtB );
 	}
 
