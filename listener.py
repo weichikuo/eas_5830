@@ -55,9 +55,53 @@ def scan_blocks(chain, start_block, end_block, contract_address, eventfile='depo
         events = event_filter.get_all_entries()
         #print( f"Got {len(events)} entries for block {block_num}" )
         # TODO YOUR CODE HERE
+        rows = []
+        for evt in events:
+            block = w3.eth.get_block(evt.blockNumber)
+            rows.append({
+                "chain": chain,
+                "token": evt.args["token"],
+                "recipient": evt.args["recipient"],
+                "amount": evt.args["amount"],
+                "transactionHash": evt.transactionHash.hex(),
+                "address": evt.address,
+                "date": datetime.fromtimestamp(block["timestamp"]).strftime("%d/%m/%Y %H:%M:%S")
+            })
+
+        df_new = pd.DataFrame(rows, columns=["chain", "token", "recipient", "amount", "transactionHash", "address", "date"])
+
+        if Path(eventfile).exists():
+            df_old = pd.read_csv(eventfile)
+            df_all = pd.concat([df_old, df_new], ignore_index=True)
+        else:
+            df_all = df_new
+
+        df_all.to_csv(eventfile, index=False)	
     else:
         for block_num in range(start_block,end_block+1):
             event_filter = contract.events.Deposit.create_filter(from_block=block_num,to_block=block_num,argument_filters=arg_filter)
             events = event_filter.get_all_entries()
             #print( f"Got {len(events)} entries for block {block_num}" )
             # TODO YOUR CODE HERE
+            rows = []
+            for evt in events:
+                block = w3.eth.get_block(evt.blockNumber)
+                rows.append({
+                    "chain": chain,
+                    "token": evt.args["token"],
+                    "recipient": evt.args["recipient"],
+                    "amount": evt.args["amount"],
+                    "transactionHash": evt.transactionHash.hex(),
+                    "address": evt.address,
+                    "date": datetime.fromtimestamp(block["timestamp"]).strftime("%d/%m/%Y %H:%M:%S")
+                })
+
+            df_new = pd.DataFrame(rows, columns=["chain", "token", "recipient", "amount", "transactionHash", "address", "date"])
+
+            if Path(eventfile).exists():
+                df_old = pd.read_csv(eventfile)
+                df_all = pd.concat([df_old, df_new], ignore_index=True)
+            else:
+                df_all = df_new
+
+            df_all.to_csv(eventfile, index=False)
