@@ -49,4 +49,101 @@ def scan_blocks(chain, contract_info="contract_info.json"):
         print( f"Invalid chain: {chain}" )
         return 0
     
-        #YOUR CODE HERE
+    #YOUR CODE HERE
+    w3 = connect_to(chain)
+    this_contract_info = get_contract_info(chain, contract_info)
+
+    this_contract = w3.eth.contract(
+        address=Web3.to_checksum_address(this_contract_info["address"]),
+        abi=this_contract_info["abi"]
+    )
+
+    latest_block = w3.eth.get_block_number()
+    start_block = max(0, latest_block - 4)
+    end_block = latest_block
+
+    with open("student_credentials", "r") as f:
+        sk = f.read().strip()
+
+    if not sk.startswith("0x"):
+        sk = "0x" + sk
+
+    if chain == "source":
+        event_filter = this_contract.events.Deposit.create_filter(
+            from_block=start_block,
+            to_block=end_block
+        )
+        events = event_filter.get_all_entries()
+
+        other_w3 = connect_to("destination")
+        other_contract_info = get_contract_info("destination", contract_info)
+        other_contract = other_w3.eth.contract(
+            address=Web3.to_checksum_address(other_contract_info["address"]),
+            abi=other_contract_info["abi"]
+        )
+
+        acct = other_w3.eth.account.from_key(sk)
+        nonce = other_w3.eth.get_transaction_count(acct.address)
+
+        for evt in events:
+            token = Web3.to_checksum_address(evt.args["token"])
+            recipient = Web3.to_checksum_address(evt.args["recipient"])
+            amount = evt.args["amount"]
+
+            tx = other_contract.functions.wrap(
+                token,
+                recipient,
+                amount
+            ).build_transaction({
+                "from": acct.address,
+                "nonce": nonce,
+                "gas": 300000,
+                "gasPrice": other_w3.eth.gas_price,
+                "chainId": other_w3.eth.chain_id
+            })
+
+            signed_tx = other_w3.eth.account.sign_transaction(tx, private_key=sk)
+            raw_tx = signed_tx.raw_transaction if hasattr(signed_tx, "raw_transaction") else signed_tx.rawTransaction
+            tx_hash = other_w3.eth.send_raw_transaction(raw_tx)
+            other_w3.eth.wait_for_transaction_receipt(tx_hash)
+            nonce += 1
+
+    elif chain == "destination":
+        event_filter = this_contract.events.Unwrap.create_filter(
+            from_block=start_block,
+            to_block=end_block
+        )
+        events = event_filter.get_all_entries()
+
+        other_w3 = connect_to("source")
+        other_contract_info = get_contract_info("source", contract_info)
+        other_contract = other_w3.eth.contract(
+            address=Web3.to_checksum_address(other_contract_info["address"]),
+            abi=other_contract_info["abi"]
+        )
+
+        acct = other_w3.eth.account.from_key(sk)
+        nonce = other_w3.eth.get_transaction_count(acct.address)
+
+        for evt in events:
+            token = Web3.to_checksum_address(evt.args["underlying_token"])
+            recipient = Web3.to_checksum_address(evt.args["to"])
+            amount = evt.args["amount"]
+
+            tx = other_contract.functions.withdraw(
+                token,
+                recipient,
+                amount
+            ).build_transaction({
+                "from": acct.address,
+                "nonce": nonce,
+                "gas": 300000,
+                "gasPrice": other_w3.eth.gas_price,
+                "chainId": other_w3.eth.chain_id
+            })
+
+            signed_tx = other_w3.eth.account.sign_transaction(tx, private_key=sk)
+            raw_tx = signed_tx.raw_transaction if hasattr(signed_tx, "raw_transaction") else signed_tx.rawTransaction
+            tx_hash = other_w3.eth.send_raw_transaction(raw_tx)
+            other_w3.eth.wait_for_transaction_receipt(tx_hash)
+            nonce += 1
