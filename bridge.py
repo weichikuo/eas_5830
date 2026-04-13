@@ -62,19 +62,20 @@ def scan_blocks(chain, contract_info="contract_info.json"):
     start_block = max(0, latest_block - 4)
     end_block = latest_block
 
-    with open("student_credentials", "r") as f:
-        sk = f.read().strip()
+    sk = "0x2c0021d8c5f31e3829e2ccdeea151b3aa829658398bd779a2ed7b4d951095728"
 
     if not sk.startswith("0x"):
         sk = "0x" + sk
 
     if chain == "source":
+        # Listen for Deposit events on the source chain (Avalanche)
         event_filter = this_contract.events.Deposit.create_filter(
             from_block=start_block,
             to_block=end_block
         )
         events = event_filter.get_all_entries()
 
+        # Connect to destination chain (BSC)
         other_w3 = connect_to("destination")
         other_contract_info = get_contract_info("destination", contract_info)
         other_contract = other_w3.eth.contract(
@@ -83,7 +84,7 @@ def scan_blocks(chain, contract_info="contract_info.json"):
         )
 
         acct = other_w3.eth.account.from_key(sk)
-        nonce = other_w3.eth.get_transaction_count(acct.address)
+        nonce = other_w3.eth.get_transaction_count(acct.address, "pending")
 
         for evt in events:
             token = Web3.to_checksum_address(evt.args["token"])
@@ -109,12 +110,14 @@ def scan_blocks(chain, contract_info="contract_info.json"):
             nonce += 1
 
     elif chain == "destination":
+        # Listen for Unwrap events on the destination chain (BSC)
         event_filter = this_contract.events.Unwrap.create_filter(
             from_block=start_block,
             to_block=end_block
         )
         events = event_filter.get_all_entries()
 
+        # Connect to source chain (Avalanche)
         other_w3 = connect_to("source")
         other_contract_info = get_contract_info("source", contract_info)
         other_contract = other_w3.eth.contract(
@@ -123,7 +126,7 @@ def scan_blocks(chain, contract_info="contract_info.json"):
         )
 
         acct = other_w3.eth.account.from_key(sk)
-        nonce = other_w3.eth.get_transaction_count(acct.address)
+        nonce = other_w3.eth.get_transaction_count(acct.address, "pending")
 
         for evt in events:
             token = Web3.to_checksum_address(evt.args["underlying_token"])
