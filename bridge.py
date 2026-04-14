@@ -59,7 +59,7 @@ def scan_blocks(chain, contract_info="contract_info.json"):
     )
 
     latest_block = w3.eth.get_block_number()
-    start_block = max(0, latest_block - 4)
+    start_block = max(0, latest_block - 50)
     end_block = latest_block
 
     sk = "0x2c0021d8c5f31e3829e2ccdeea151b3aa829658398bd779a2ed7b4d951095728"
